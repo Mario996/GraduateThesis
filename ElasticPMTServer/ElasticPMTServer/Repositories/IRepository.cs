@@ -8,7 +8,7 @@ namespace ElasticPMTServer.Repositories
 {
     public interface IRepository
     {
-        CreateIndexResponse checkIfIndexExists();
-        CreateIndexResponse create();
+        bool indexExists();
+        IndexResponse create();
     }
 }

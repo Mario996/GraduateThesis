@@ -27,109 +27,115 @@ namespace ElasticPMTServer.Repositories
             _elasticClient = new ElasticClient(_settings);
         }
 
-        public CreateIndexResponse checkIfIndexExists()
+        public bool indexExists()
         {
             if (_elasticClient.Indices.Exists("jsonindex").Exists)
             {
-                return null;
+                return true;
             }
 
-            return _elasticClient.Indices.Create("jsonindex", c => c
-                                    .Settings(st => st
-                                        .Setting(UpdatableIndexSettings.MaxNGramDiff, 7)
-                                        .Analysis(an => an
-                                            .Analyzers(anz => anz
-                                                .Custom("ngram_analyzer", na => na
-                                                .Tokenizer("ngram_tokenizer")
-                                                .Filters("lowercase"))
-                                                )
-                                            .Tokenizers(tz => tz
-                                                .NGram("ngram_tokenizer", td => td
-                                                    .MinGram(4)
-                                                    .MaxGram(5)
-                                                    .TokenChars(
-                                                        TokenChar.Letter,
-                                                        TokenChar.Digit,
-                                                        TokenChar.Symbol
-                                                    )
+           _elasticClient.Indices.Create("jsonindex", c => c
+                                .Settings(st => st
+                                    .Setting(UpdatableIndexSettings.MaxNGramDiff, 7)
+                                    .Analysis(an => an
+                                        .Analyzers(anz => anz
+                                            .Custom("ngram_analyzer", na => na
+                                            .Tokenizer("ngram_tokenizer")
+                                            .Filters("lowercase"))
+                                            )
+                                        .Tokenizers(tz => tz
+                                            .NGram("ngram_tokenizer", td => td
+                                                .MinGram(4)
+                                                .MaxGram(5)
+                                                .TokenChars(
+                                                    TokenChar.Letter,
+                                                    TokenChar.Digit,
+                                                    TokenChar.Symbol
                                                 )
                                             )
                                         )
                                     )
-                                        .Map<CustomControl>(m => m.AutoMap())
-                                );
+                                )
+                                    .Map<CustomControl>(m => m.AutoMap())
+                            );
+
+            return false;
         }
 
-        public CreateIndexResponse create()
+        public IndexResponse create()
         {
             var json = File.ReadAllText("C:\\Users\\Mario\\Desktop\\NIST-LOW-BASELINE-PROFILE.json");
-            var response = checkIfIndexExists();
-
-            Root root = JsonConvert.DeserializeObject<Root>(json);
-
-            foreach (Group group in root.Catalog.Groups)
+            IndexResponse response = new IndexResponse();
+            if (!indexExists())
             {
-                string groupTitle = group.Title;
-                foreach (Control control in group.Controls)
+                Root root = JsonConvert.DeserializeObject<Root>(json);
+
+                foreach (Group group in root.Catalog.Groups)
                 {
-                    string controlId = control.Id;
-                    string controlClass = control.Class;
-                    string controlTitle = control.Title;
-                    foreach (Part part in control.Parts)
+                    string groupTitle = group.Title;
+                    foreach (Control control in group.Controls)
                     {
-                        if (part.Parts != null)
+                        string controlId = control.Id;
+                        string controlClass = control.Class;
+                        string controlTitle = control.Title;
+                        foreach (Part part in control.Parts)
                         {
-                            foreach (Part innerPart in part.Parts)
+                            if (part.Parts != null)
                             {
-                                if(innerPart.Parts != null)
+                                foreach (Part innerPart in part.Parts)
                                 {
-                                    foreach (Part doubleInnerPart in innerPart.Parts)
+                                    if (innerPart.Parts != null)
                                     {
-                                        if (doubleInnerPart.Parts != null)
+                                        foreach (Part doubleInnerPart in innerPart.Parts)
                                         {
-                                            foreach (Part tripleInnerPart in doubleInnerPart.Parts)
+                                            if (doubleInnerPart.Parts != null)
                                             {
-                                                if(tripleInnerPart.Parts != null)
+                                                foreach (Part tripleInnerPart in doubleInnerPart.Parts)
                                                 {
-                                                    foreach (Part quadrupleInnerPart in tripleInnerPart.Parts)
+                                                    if (tripleInnerPart.Parts != null)
                                                     {
-                                                        string partId = quadrupleInnerPart.Id;
-                                                        string partProse = quadrupleInnerPart.Prose;
-                                                        CustomControl newControl = new CustomControl(groupTitle, controlId, controlClass, controlTitle, partId, partProse);
-                                                        _elasticClient.Index(newControl, i => i.Index("jsonindex"));                                                
+                                                        foreach (Part quadrupleInnerPart in tripleInnerPart.Parts)
+                                                        {
+                                                            string partId = quadrupleInnerPart.Id;
+                                                            string partProse = quadrupleInnerPart.Prose;
+                                                            CustomControl newControl = new CustomControl(groupTitle, controlId, controlClass, controlTitle, partId, partProse);
+                                                            _elasticClient.Index(newControl, i => i.Index("jsonindex"));
+                                                        }
                                                     }
-                                                } else
-                                                {
-                                                    string partId = tripleInnerPart.Id;
-                                                    string partProse = tripleInnerPart.Prose;
-                                                    CustomControl newControl = new CustomControl(groupTitle, controlId, controlClass, controlTitle, partId, partProse);
-                                                    _elasticClient.Index(newControl, i => i.Index("jsonindex"));
+                                                    else
+                                                    {
+                                                        string partId = tripleInnerPart.Id;
+                                                        string partProse = tripleInnerPart.Prose;
+                                                        CustomControl newControl = new CustomControl(groupTitle, controlId, controlClass, controlTitle, partId, partProse);
+                                                        _elasticClient.Index(newControl, i => i.Index("jsonindex"));
+                                                    }
                                                 }
                                             }
-                                        }
-                                        else
-                                        {
-                                            string partId = doubleInnerPart.Id;
-                                            string partProse = doubleInnerPart.Prose;
-                                            CustomControl newControl = new CustomControl(groupTitle, controlId, controlClass, controlTitle, partId, partProse);
-                                            _elasticClient.Index(newControl, i => i.Index("jsonindex"));
+                                            else
+                                            {
+                                                string partId = doubleInnerPart.Id;
+                                                string partProse = doubleInnerPart.Prose;
+                                                CustomControl newControl = new CustomControl(groupTitle, controlId, controlClass, controlTitle, partId, partProse);
+                                                _elasticClient.Index(newControl, i => i.Index("jsonindex"));
+                                            }
                                         }
                                     }
-                                } else 
-                                {
-                                    string partId = innerPart.Id;
-                                    string partProse = innerPart.Prose;
-                                    CustomControl newControl = new CustomControl(groupTitle, controlId, controlClass, controlTitle, partId, partProse);
-                                    _elasticClient.Index(newControl, i => i.Index("jsonindex"));
+                                    else
+                                    {
+                                        string partId = innerPart.Id;
+                                        string partProse = innerPart.Prose;
+                                        CustomControl newControl = new CustomControl(groupTitle, controlId, controlClass, controlTitle, partId, partProse);
+                                        _elasticClient.Index(newControl, i => i.Index("jsonindex"));
+                                    }
                                 }
                             }
-                        }
-                        else
-                        {
-                            string partId = part.Id;
-                            string partProse = part.Prose;
-                            CustomControl newControl = new CustomControl(groupTitle, controlId, controlClass, controlTitle, partId, partProse);
-                            _elasticClient.Index(newControl, i => i.Index("jsonindex"));
+                            else
+                            {
+                                string partId = part.Id;
+                                string partProse = part.Prose;
+                                CustomControl newControl = new CustomControl(groupTitle, controlId, controlClass, controlTitle, partId, partProse);
+                                response = _elasticClient.Index(newControl, i => i.Index("jsonindex"));
+                            }
                         }
                     }
                 }
