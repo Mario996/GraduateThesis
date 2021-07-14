@@ -49,8 +49,6 @@
 </template>
 
 <script>
-import { requirementsService } from '../services/requirements-service'
-import { tasksService } from '../services/tasks-service'
 import router from '../router/index'
 
 export default {
@@ -59,16 +57,7 @@ export default {
         numberOfRequirements: 0,
         numberOfTasks: 0,
     }),
-    created () {
-        requirementsService.getAllRequirements()
-            .then((response) => {
-                this.numberOfRequirements = response.length
-            })
-        tasksService.getAllTasks()
-            .then((response) => {
-                this.numberOfTasks = response.length
-            })
-    },
+    created () {},
     methods: {
         listRequirements () {
             router.push('/list-requirements')

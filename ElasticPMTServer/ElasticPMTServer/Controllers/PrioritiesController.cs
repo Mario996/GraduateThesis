@@ -9,18 +9,26 @@ namespace ElasticPMTServer.Controllers
     [ApiController]
     public class SearchController : ControllerBase
     {
-        private readonly IPriorityRepository _priorityRepository;
+        private readonly IRepository _repository;
         private readonly ISearchService _searchService;
 
-        public SearchController(ISearchService searchService)
+        public SearchController(ISearchService searchService, IRepository repository)
         {
             _searchService = searchService;
+            _repository = repository;
         }
 
-        [HttpPost("search")]
+        [HttpPost]
         public IActionResult Search([FromBody] SearchObject searchValue)
         {
             var result = _searchService.Autocomplete(searchValue.Query, 5);
+            return Ok(result);
+        }
+
+        [HttpPost("create-index")]
+        public IActionResult CreateIndex()
+        {
+            var result = _repository.create();
             return Ok(result);
         }
 

@@ -8,121 +8,63 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Task = ElasticPMTServer.Models.Task;
 
 namespace ElasticPMTServer.Repositories
 {
-    public class Repository<TEntity> : IRepository<TEntity> where TEntity : ElasticSearchType
+    public class Repository : IRepository
     {
         protected readonly ElasticClient _elasticClient;
-        protected readonly ElasticClient _elasticJsonClient;
         private readonly ConnectionSettings _settings;
-        private readonly ConnectionSettings _settingsJson;
-        private readonly string _indexName;
 
-        protected Repository(string indexName)
+        public Repository()
         {
             _settings = new ConnectionSettings()
-                                .DefaultMappingFor<TEntity>(m => m
-                                .IndexName(indexName)
-                                .IdProperty(p => p.Id)
-                                );
-
-            _settingsJson = new ConnectionSettings()
-                               .DefaultMappingFor<CustomControl>(m => m
+                             .DefaultMappingFor<CustomControl>(m => m
                                .DisableIdInference()
                                .IndexName("jsonindex")
                                );
 
             _elasticClient = new ElasticClient(_settings);
-            _elasticJsonClient = new ElasticClient(_settingsJson);
-            _indexName = indexName;
         }
 
-        public void checkIfIndexExists()
+        public CreateIndexResponse checkIfIndexExists()
         {
-            if (_elasticClient.Indices.Exists(_indexName).Exists)
+            if (_elasticClient.Indices.Exists("jsonindex").Exists)
             {
-                return;
+                return null;
             }
 
-            switch (_indexName)
-            {
-                case "requirements":
-                    _elasticClient.Indices.Create(_indexName, c => c
-                        .Settings(s => s
-                            .NumberOfShards(1)
-                        ).Map<Requirement>(r => r
-                            .AutoMap()
-                            .Properties(ps => ps
-                                    .Nested<Comment>(n => n
-                                        .Name(nn => nn.Comments)
-                                        .AutoMap()
-                                    )
-                            )
-                        ));
-                    break;
-                case "tasks":
-                    _elasticClient.Indices.Create(_indexName, c => c
-                       .Settings(s => s
-                           .NumberOfShards(1)
-                       ).Map<Task>(r => r
-                           .AutoMap()
-                           .Properties(ps => ps
-                                   .Nested<Comment>(n => n
-                                       .Name(nn => nn.Comments)
-                                       .AutoMap()
-                                   )
-                                   .Nested<Label>(n => n
-                                       .Name(nn => nn.Labels)
-                                       .AutoMap()
-                                   )
-                           )
-                       ));
-                    break;
-                default:
-                    _elasticClient.Indices.Create(_indexName, c => c
-                                                .Settings(s => s
-                                                    .NumberOfShards(1))
-                                                    .Map<TEntity>(m => m
-                                                        .AutoMap()
+            return _elasticClient.Indices.Create("jsonindex", c => c
+                                    .Settings(st => st
+                                        .Setting(UpdatableIndexSettings.MaxNGramDiff, 7)
+                                        .Analysis(an => an
+                                            .Analyzers(anz => anz
+                                                .Custom("ngram_analyzer", na => na
+                                                .Tokenizer("ngram_tokenizer")
+                                                .Filters("lowercase"))
+                                                )
+                                            .Tokenizers(tz => tz
+                                                .NGram("ngram_tokenizer", td => td
+                                                    .MinGram(4)
+                                                    .MaxGram(5)
+                                                    .TokenChars(
+                                                        TokenChar.Letter,
+                                                        TokenChar.Digit,
+                                                        TokenChar.Symbol
                                                     )
-                                                );
-                    break;
-            }
+                                                )
+                                            )
+                                        )
+                                    )
+                                        .Map<CustomControl>(m => m.AutoMap())
+                                );
         }
 
-        public IndexResponse create(TEntity document)
+        public CreateIndexResponse create()
         {
             var json = File.ReadAllText("C:\\Users\\Mario\\Desktop\\NIST-LOW-BASELINE-PROFILE.json");
-            //_elasticJsonClient.Indices.Create("jsonindex", c => c
-            //           .Settings(s => s
-            //               .NumberOfShards(1))
-            //           .Map<CustomControl>(m => m.AutoMap()));
-            var createIndexResponse = _elasticJsonClient.Indices.Create("jsonindex", c => c
-                                                        .Settings(st => st
-                                                            .Setting(UpdatableIndexSettings.MaxNGramDiff, 7)
-                                                            .Analysis(an => an
-                                                                .Analyzers(anz => anz
-                                                                    .Custom("ngram_analyzer", na => na
-                                                                    .Tokenizer("ngram_tokenizer")
-                                                                    .Filters("lowercase"))
-                                                                    )
-                                                                .Tokenizers(tz => tz
-                                                                    .NGram("ngram_tokenizer", td => td
-                                                                        .MinGram(3)
-                                                                        .MaxGram(9)
-                                                                        .TokenChars(
-                                                                            TokenChar.Letter,
-                                                                            TokenChar.Digit,
-                                                                            TokenChar.Symbol
-                                                                        )
-                                                                    )
-                                                                )
-                                                            )
-                                                        )
-                                                         .Map<CustomControl>(m => m.AutoMap())
-                                                    );
+            var response = checkIfIndexExists();
+
             Root root = JsonConvert.DeserializeObject<Root>(json);
 
             foreach (Group group in root.Catalog.Groups)
@@ -154,14 +96,14 @@ namespace ElasticPMTServer.Repositories
                                                         string partId = quadrupleInnerPart.Id;
                                                         string partProse = quadrupleInnerPart.Prose;
                                                         CustomControl newControl = new CustomControl(groupTitle, controlId, controlClass, controlTitle, partId, partProse);
-                                                        var response = _elasticJsonClient.Index(newControl, i => i.Index("jsonindex"));                                                
+                                                        _elasticClient.Index(newControl, i => i.Index("jsonindex"));                                                
                                                     }
                                                 } else
                                                 {
                                                     string partId = tripleInnerPart.Id;
                                                     string partProse = tripleInnerPart.Prose;
                                                     CustomControl newControl = new CustomControl(groupTitle, controlId, controlClass, controlTitle, partId, partProse);
-                                                    _elasticJsonClient.Index(newControl, i => i.Index("jsonindex"));
+                                                    _elasticClient.Index(newControl, i => i.Index("jsonindex"));
                                                 }
                                             }
                                         }
@@ -170,8 +112,7 @@ namespace ElasticPMTServer.Repositories
                                             string partId = doubleInnerPart.Id;
                                             string partProse = doubleInnerPart.Prose;
                                             CustomControl newControl = new CustomControl(groupTitle, controlId, controlClass, controlTitle, partId, partProse);
-                                            var response = _elasticJsonClient.Index(newControl, i => i.Index("jsonindex"));
-                                            Console.WriteLine(response.IsValid);
+                                            _elasticClient.Index(newControl, i => i.Index("jsonindex"));
                                         }
                                     }
                                 } else 
@@ -179,8 +120,7 @@ namespace ElasticPMTServer.Repositories
                                     string partId = innerPart.Id;
                                     string partProse = innerPart.Prose;
                                     CustomControl newControl = new CustomControl(groupTitle, controlId, controlClass, controlTitle, partId, partProse);
-                                    var response = _elasticJsonClient.Index(newControl, i => i.Index("jsonindex"));
-                                    Console.WriteLine(response.IsValid);
+                                    _elasticClient.Index(newControl, i => i.Index("jsonindex"));
                                 }
                             }
                         }
@@ -189,42 +129,40 @@ namespace ElasticPMTServer.Repositories
                             string partId = part.Id;
                             string partProse = part.Prose;
                             CustomControl newControl = new CustomControl(groupTitle, controlId, controlClass, controlTitle, partId, partProse);
-                            var response = _elasticJsonClient.Index(newControl, i => i.Index("jsonindex"));
-                            Console.WriteLine(response.IsValid);
+                            _elasticClient.Index(newControl, i => i.Index("jsonindex"));
                         }
                     }
                 }
             }
-            checkIfIndexExists();
-            return _elasticClient.Index(document, i => i
-                    .Refresh(Refresh.True));
+
+            return response;
         }
 
-        public DeleteResponse delete(string id)
-        {
-            return _elasticClient.Delete<TEntity>(id);
-        }
+        //public DeleteResponse delete(string id)
+        //{
+        //    return _elasticClient.Delete<TEntity>(id);
+        //}
 
-        public ISearchResponse<TEntity> getAll()
-        {
-            _elasticClient.Indices.Refresh();
-            return _elasticClient.Search<TEntity>(s => s
-               .MatchAll()
-            );
-        }
+        //public ISearchResponse<TEntity> getAll()
+        //{
+        //    _elasticClient.Indices.Refresh();
+        //    return _elasticClient.Search<TEntity>(s => s
+        //       .MatchAll()
+        //    );
+        //}
 
-        public GetResponse<TEntity> getById(string id)
-        {
-            _elasticClient.Indices.Refresh();
-            return _elasticClient.Get<TEntity>(id);
-        }
+        //public GetResponse<TEntity> getById(string id)
+        //{
+        //    _elasticClient.Indices.Refresh();
+        //    return _elasticClient.Get<TEntity>(id);
+        //}
 
-        public UpdateResponse<TEntity> update(string id, TEntity document)
-        {
-            return _elasticClient.Update<TEntity>(id, u => u
-              .Doc(document)
-              .Refresh(Elasticsearch.Net.Refresh.True)
-            );
-        }
+        //public UpdateResponse<TEntity> update(string id, TEntity document)
+        //{
+        //    return _elasticClient.Update<TEntity>(id, u => u
+        //      .Doc(document)
+        //      .Refresh(Elasticsearch.Net.Refresh.True)
+        //    );
+        //}
     }
 }
