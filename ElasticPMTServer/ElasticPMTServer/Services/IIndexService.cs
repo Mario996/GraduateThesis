@@ -4,11 +4,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace ElasticPMTServer.Repositories
+namespace ElasticPMTServer.Services
 {
-    public interface IRepository
+    public interface IIndexService
     {
+        IndexResponse populateIndex();
         bool indexExists();
-        IndexResponse create();
     }
 }

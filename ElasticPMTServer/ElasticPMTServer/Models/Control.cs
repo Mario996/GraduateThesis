@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
-namespace ElasticPMTServer.Models.Pokusaj
+namespace ElasticPMTServer.Models
 {
     public class Control
     {

@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace ElasticPMTServer.Models.Pokusaj
+namespace ElasticPMTServer.Models
 {
     public class CustomControl
     {

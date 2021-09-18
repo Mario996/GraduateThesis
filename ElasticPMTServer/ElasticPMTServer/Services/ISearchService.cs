@@ -1,4 +1,4 @@
-﻿using ElasticPMTServer.Models.Pokusaj;
+﻿using ElasticPMTServer.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;

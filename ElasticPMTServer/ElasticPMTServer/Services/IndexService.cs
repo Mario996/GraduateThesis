@@ -1,22 +1,16 @@
 ﻿using ElasticPMTServer.Models;
-using ElasticPMTServer.Models.Pokusaj;
-using Elasticsearch.Net;
 using Nest;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 
-namespace ElasticPMTServer.Repositories
+namespace ElasticPMTServer.Services
 {
-    public class Repository : IRepository
+    public class IndexService : IIndexService
     {
-        protected readonly ElasticClient _elasticClient;
+        private readonly ElasticClient _elasticClient;
         private readonly ConnectionSettings _settings;
 
-        public Repository()
+        public IndexService()
         {
             _settings = new ConnectionSettings()
                              .DefaultMappingFor<CustomControl>(m => m
@@ -33,41 +27,20 @@ namespace ElasticPMTServer.Repositories
             {
                 return true;
             }
-
-           _elasticClient.Indices.Create("jsonindex", c => c
-                                .Settings(st => st
-                                    .Setting(UpdatableIndexSettings.MaxNGramDiff, 7)
-                                    .Analysis(an => an
-                                        .Analyzers(anz => anz
-                                            .Custom("ngram_analyzer", na => na
-                                            .Tokenizer("ngram_tokenizer")
-                                            .Filters("lowercase"))
-                                            )
-                                        .Tokenizers(tz => tz
-                                            .NGram("ngram_tokenizer", td => td
-                                                .MinGram(4)
-                                                .MaxGram(5)
-                                                .TokenChars(
-                                                    TokenChar.Letter,
-                                                    TokenChar.Digit,
-                                                    TokenChar.Symbol
-                                                )
-                                            )
-                                        )
-                                    )
-                                )
-                                    .Map<CustomControl>(m => m.AutoMap())
-                            );
-
             return false;
         }
 
-        public IndexResponse create()
+        public IndexResponse populateIndex()
         {
-            var json = File.ReadAllText("C:\\Users\\Mario\\Desktop\\NIST-LOW-BASELINE-PROFILE.json");
+            var json = File.ReadAllText("C:\\Users\\Mario\\Desktop\\DIPLOMSKI\\NIST-LOW-BASELINE-PROFILE.json");
             IndexResponse response = new IndexResponse();
             if (!indexExists())
             {
+                var createIndexResponse = createIndex();
+                if (!createIndexResponse.IsValid)
+                {
+                    return new IndexResponse();
+                }
                 Root root = JsonConvert.DeserializeObject<Root>(json);
 
                 foreach (Group group in root.Catalog.Groups)
@@ -144,31 +117,32 @@ namespace ElasticPMTServer.Repositories
             return response;
         }
 
-        //public DeleteResponse delete(string id)
-        //{
-        //    return _elasticClient.Delete<TEntity>(id);
-        //}
-
-        //public ISearchResponse<TEntity> getAll()
-        //{
-        //    _elasticClient.Indices.Refresh();
-        //    return _elasticClient.Search<TEntity>(s => s
-        //       .MatchAll()
-        //    );
-        //}
-
-        //public GetResponse<TEntity> getById(string id)
-        //{
-        //    _elasticClient.Indices.Refresh();
-        //    return _elasticClient.Get<TEntity>(id);
-        //}
-
-        //public UpdateResponse<TEntity> update(string id, TEntity document)
-        //{
-        //    return _elasticClient.Update<TEntity>(id, u => u
-        //      .Doc(document)
-        //      .Refresh(Elasticsearch.Net.Refresh.True)
-        //    );
-        //}
+        CreateIndexResponse createIndex()
+        {
+            return _elasticClient.Indices.Create("jsonindex", c => c
+                     .Settings(st => st
+                         .Setting(UpdatableIndexSettings.MaxNGramDiff, 7)
+                         .Analysis(an => an
+                             .Analyzers(anz => anz
+                                 .Custom("ngram_analyzer", na => na
+                                 .Tokenizer("ngram_tokenizer")
+                                 .Filters("lowercase"))
+                                 )
+                             .Tokenizers(tz => tz
+                                 .NGram("ngram_tokenizer", td => td
+                                     .MinGram(4)
+                                     .MaxGram(5)
+                                     .TokenChars(
+                                         TokenChar.Letter,
+                                         TokenChar.Digit,
+                                         TokenChar.Symbol
+                                     )
+                                 )
+                             )
+                         )
+                     )
+                         .Map<CustomControl>(m => m.AutoMap())
+                 );
+        }
     }
 }

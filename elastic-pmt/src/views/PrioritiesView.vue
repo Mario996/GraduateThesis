@@ -18,13 +18,12 @@
             :loading="isLoading"
             :search-input.sync="search"
             color="black"
-            hide-no-data
-            hide-selected
             item-text="partProse"
             item-value="partId"
             label="Security requirements"
             placeholder="Start typing to Search"
             prepend-icon="mdi-database-search"
+            no-filter
             return-object />
         </v-card-text>
         <v-divider />
@@ -71,6 +70,7 @@
 
 <script>
 import { searchService } from '../services/search-service'
+import { indexService } from '../services/index-service'
 
 export default {
     data: () => ({
@@ -100,9 +100,6 @@ export default {
     },
     watch: {
         search (val) {
-            // Items have already been requested
-            if (this.isLoading) return
-
             this.isLoading = true
             searchService.search(this.search).then((response) => {
                 this.searchResults = response.map((result) => {
@@ -115,16 +112,20 @@ export default {
                         partProse: result.partProse
                     }
                 })
+                console.log(this.searchResults)
                 this.count = response.count
             }).catch(err => {
                 console.log(err)
             })
-                .finally(() => (this.isLoading = false))
+                .finally(() => {
+                    this.isLoading = false
+                })
         },
     },
     created () {
-        searchService.create()
+        indexService.create()
             .then((response) => {
+                console.log('CREATED')
                 console.log(response)
             })
     },
@@ -141,13 +142,29 @@ export default {
                         partProse: result.partProse
                     }
                 })
-                console.log(this.searchResults)
+                console.log('SEARCH CONTROLS')
             })
         },
         createIndex () {
-            searchService.create().then((response) => {
+            indexService.create().then((response) => {
+                console.log('CREATE INDEX')
                 console.log(response)
             })
+        },
+        transformKeyName (key) {
+            if (key === 'groupTitle') {
+                return 'Group title'
+            } else if (key === 'controlId') {
+                return 'Control id'
+            } else if (key === 'controlClass') {
+                return 'Control class'
+            } else if (key === 'controlTitle') {
+                return 'Control title'
+            } else if (key === 'partId') {
+                return 'Part id'
+            } else if (key === 'partProse') {
+                return 'Part prose'
+            }
         }
     },
 }

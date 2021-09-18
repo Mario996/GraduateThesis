@@ -1,6 +1,4 @@
-﻿using ElasticPMTServer.Models;
-using ElasticPMTServer.Repositories;
-using ElasticPMTServer.Services;
+﻿using ElasticPMTServer.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
@@ -23,7 +21,7 @@ namespace ElasticPMTServer
         {
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
             services.AddSingleton<ISearchService, SearchService>();
-            services.AddSingleton<IRepository, Repository>();
+            services.AddSingleton<IIndexService, IndexService>();
             services.AddCors(options =>
             {
                 options.AddPolicy("CorsPolicy",

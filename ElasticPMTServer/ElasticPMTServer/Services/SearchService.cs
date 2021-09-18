@@ -1,4 +1,4 @@
-﻿using ElasticPMTServer.Models.Pokusaj;
+﻿using ElasticPMTServer.Models;
 using Nest;
 using System;
 using System.Collections.Generic;
@@ -9,7 +9,7 @@ namespace ElasticPMTServer.Services
 {
     public class SearchService : ISearchService
     {
-        protected readonly ElasticClient _elasticJsonClient;
+        private readonly ElasticClient _elasticJsonClient;
         private readonly ConnectionSettings _settingsJson;
 
         public SearchService()
@@ -26,14 +26,6 @@ namespace ElasticPMTServer.Services
         {
             if (query != null)
             {
-                //var result = _elasticJsonClient.Search<CustomControl>(x => x
-                //                    .Suggest(su => su
-                //                        .Completion("custom-control-suggestions", c => c
-                //                            .Field(f => f.Suggest)
-                //                            .Prefix(query)
-                //                            .Fuzzy(f => f
-                //                        .Fuzziness(Fuzziness.Auto))
-                //                        .Size(count))));
                 var result = _elasticJsonClient.Search<CustomControl>(x => x
                                     .Query(q => q
                                     .Match(m => m.Field(
@@ -42,14 +34,8 @@ namespace ElasticPMTServer.Services
                                     .Size(count));
 
                 return result.Documents;
-                //return result.Suggest["custom-control-suggestions"].SelectMany(x => x.Options)
-                //.Select(y => y.Source);
             }
-            else
-            {
-                return Enumerable.Empty<CustomControl>();
-            }
-
+            return Enumerable.Empty<CustomControl>();
         }
     }
 }
