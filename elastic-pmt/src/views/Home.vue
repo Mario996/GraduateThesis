@@ -1,80 +1,166 @@
 <template>
-  <v-container
-    fluid
-    class="fill-height">
-    <v-row
-      align="center"
-      justify="center">
-      <v-col cols="12"
-             align="center"
-             class="mb-12">
-        <h1>
-          Welcome to Elastic Project Management Tool
-        </h1>
-      </v-col>
-      <v-col cols="6"
-             align="center">
-        <v-card
-          height="200"
-          width="250"
-          flat
-          class="v-card-border"
-          @click="listRequirements">
-          <p class="big-number">
-            {{ numberOfRequirements }}
-          </p>
-          <p>
-            REQUIREMENT(S) CREATED
-          </p>
-        </v-card>
-      </v-col>
-      <v-col cols="6"
-             align="center">
-        <v-card
-          height="200"
-          width="250"
-          flat
-          class="v-card-border"
-          @click="listTasks">
-          <p class="big-number">
-            {{ numberOfTasks }}
-          </p>
-          <p>
-            TASK(S) CREATED
-          </p>
-        </v-card>
-      </v-col>
-    </v-row>
-  </v-container>
+  <v-row align="center"
+         justify="center">
+    <v-col
+      sm="10"
+      md="8"
+      lg="8">
+      <v-card
+        color="red lighten-2"
+        light>
+        <v-card-title class="text-h5 red lighten-3">
+          Search for security rules
+        </v-card-title>
+        <v-card-text>
+          <v-autocomplete
+            v-model="chosenRequirement"
+            :items="searchResults"
+            :loading="isLoading"
+            :search-input.sync="search"
+            color="black"
+            item-text="partProse"
+            item-value="partId"
+            label="Security requirements"
+            placeholder="Start typing to Search"
+            prepend-icon="mdi-database-search"
+            no-filter
+            return-object />
+        </v-card-text>
+        <v-divider />
+        <v-expand-transition>
+          <v-list
+            v-if="chosenRequirement"
+            class="red lighten-3">
+            <v-list-item
+              v-for="(field, i) in fields"
+              :key="i">
+              <v-list-item-content>
+                <v-list-item-title v-text="field.key" />
+                <v-list-item-subtitle class="text-wrap"
+                                      style="font-weight: bold;"
+                                      v-text="field.value" />
+              </v-list-item-content>
+            </v-list-item>
+          </v-list>
+        </v-expand-transition>
+        <v-card-actions>
+          <v-btn
+            large
+            :disabled="!chosenRequirement"
+            color="primary"
+            @click="addRequirementToList()">
+            Add to list
+          </v-btn>
+          <v-spacer />
+          <v-btn
+            large
+            :disabled="!chosenRequirement"
+            color="white darken-3"
+            @click="chosenRequirement = null">
+            Clear
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-col>
+  </v-row>
 </template>
 
 <script>
-import router from '../router/index'
+import { searchService } from '../services/search-service'
+import { indexService } from '../services/index-service'
+import { requirementService } from '../services/requirement-service'
 
 export default {
-    name: 'Home',
     data: () => ({
-        numberOfRequirements: 0,
-        numberOfTasks: 0,
+        search: '',
+        searchResults: [],
+        chosenRequirement: '',
+        isLoading: false,
+        count: 0,
     }),
-    created () {},
-    methods: {
-        listRequirements () {
-            router.push('/list-requirements')
+    computed: {
+        fields () {
+            if (!this.chosenRequirement) return []
+
+            return Object.keys(this.chosenRequirement).map(key => {
+                if (key === 'suggest') {
+                    return {
+                        key: null,
+                        value: null
+                    }
+                }
+                return {
+                    key: this.transformKeyName(key),
+                    value: this.chosenRequirement[key] || 'n/a',
+                }
+            })
         },
-        listTasks () {
-            router.push('/list-tasks')
+    },
+    watch: {
+        search () {
+            this.isLoading = true
+            searchService.search(this.search).then((response) => {
+                this.searchResults = response.map((result) => {
+                    return {
+                        controlClass: result.controlClass,
+                        controlId: result.controlId,
+                        controlTitle: result.controlTitle,
+                        groupTitle: result.groupTitle,
+                        partId: result.partId,
+                        partProse: result.partProse
+                    }
+                })
+                console.log(this.searchResults)
+                this.count = response.count
+            }).catch(err => {
+                console.log(err)
+            })
+                .finally(() => {
+                    this.isLoading = false
+                })
+        },
+    },
+    created () {
+        indexService.create()
+            .then((response) => {
+                console.log(response)
+            })
+    },
+    methods: {
+        searchControls () {
+            searchService.search(this.search).then((response) => {
+                this.searchResults = response.map((result) => {
+                    return {
+                        controlClass: result.controlClass,
+                        controlId: result.controlId,
+                        controlTitle: result.controlTitle,
+                        groupTitle: result.groupTitle,
+                        partId: result.partId,
+                        partProse: result.partProse
+                    }
+                })
+            })
+        },
+        transformKeyName (key) {
+            if (key === 'groupTitle') {
+                return 'Group title'
+            } else if (key === 'controlId') {
+                return 'Control id'
+            } else if (key === 'controlClass') {
+                return 'Control class'
+            } else if (key === 'controlTitle') {
+                return 'Control title'
+            } else if (key === 'partId') {
+                return 'Part id'
+            } else if (key === 'partProse') {
+                return 'Part prose'
+            }
+        },
+        addRequirementToList () {
+            requirementService.addRequirementToList(this.chosenRequirement).then((response) => {
+                this.chosenRequirement = null
+            })
         }
-    }
+    },
 }
 </script>
-
-<style>
-.v-card-border{
-  border: 2px solid black!important;
-  background:inherit!important;
-}
-.big-number{
-  font-size: 8vh;
-}
-</style>

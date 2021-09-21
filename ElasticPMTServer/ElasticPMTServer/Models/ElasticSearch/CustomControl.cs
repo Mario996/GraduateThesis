@@ -15,9 +15,6 @@ namespace ElasticPMTServer.Models
         public string PartId { get; set; }
         [Text(Analyzer = "ngram_analyzer", SearchAnalyzer = "ngram_analyzer")]
         public string PartProse { get; set; }
-        [Completion(MaxInputLength = 5000, Analyzer = "ngram_analyzer", SearchAnalyzer = "ngram_analyzer")]
-        public CompletionField Suggest { get; set; }
-
 
 
         public CustomControl(string groupTitle, string controlId, string controlClass, string controlTitle, string partId, string partProse)
@@ -28,10 +25,6 @@ namespace ElasticPMTServer.Models
             this.ControlTitle = controlTitle;
             this.PartId = partId;
             this.PartProse = partProse;
-            this.Suggest = new CompletionField
-            {
-                Input = new[] { partProse }
-            };
         }
     }
 }

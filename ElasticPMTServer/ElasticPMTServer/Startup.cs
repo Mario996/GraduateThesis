@@ -1,7 +1,9 @@
-﻿using ElasticPMTServer.Services;
+﻿using ElasticPMTServer.Persistance;
+using ElasticPMTServer.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -22,6 +24,8 @@ namespace ElasticPMTServer
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
             services.AddSingleton<ISearchService, SearchService>();
             services.AddSingleton<IIndexService, IndexService>();
+            services.AddDbContext<DatabaseContext>(opt => opt.UseInMemoryDatabase());
+            services.AddScoped<IRequirementRepository, RequirementRepository>();
             services.AddCors(options =>
             {
                 options.AddPolicy("CorsPolicy",

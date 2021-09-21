@@ -10,7 +10,7 @@ namespace ElasticPMTServer.Controllers
     {
         private readonly ISearchService _searchService;
 
-        public SearchController(ISearchService searchService, IIndexService indexService)
+        public SearchController(ISearchService searchService)
         {
             _searchService = searchService;
         }
