@@ -1,6 +1,7 @@
 ﻿using ElasticPMTServer.Models;
 using ElasticPMTServer.Models.DTO;
 using ElasticPMTServer.Persistance;
+using ElasticPMTServer.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.Linq;
 
@@ -10,39 +11,39 @@ namespace ElasticPMTServer.Controllers
     [ApiController]
     public class RequirementsController : ControllerBase
     {
-        private readonly IRequirementRepository _requirementRepository;
+        private readonly IRequirementService _requirementService;
 
-        public RequirementsController(IRequirementRepository requirementRepository)
+        public RequirementsController(IRequirementService requirementService)
         {
-            _requirementRepository = requirementRepository;
+            _requirementService = requirementService;
         }
 
 
         [HttpGet]
         public IActionResult GetAllRequirements()
         {
-            return Ok(_requirementRepository.GetAllRequirements());
+            return Ok(_requirementService.GetAllRequirements());
         }
 
         [HttpGet]
         [Route("{id}")]
-        public IActionResult GetRequirement(int id)
+        public IActionResult GetRequirementById(int id)
         {
-            return Ok(_requirementRepository.GetRequirementById(id));
+            return Ok(_requirementService.GetRequirementById(id));
         }
 
         [HttpPost]
         public IActionResult CreateRequirement(RequirementDTO dto)
         {
-            var entity = _requirementRepository.AddRequirementToList(dto);
-            return CreatedAtAction(nameof(GetRequirement), new { id = entity.Id }, entity);
+            var entity = _requirementService.AddRequirementToList(dto);
+            return CreatedAtAction(nameof(GetRequirementById), new { id = entity.Id }, entity);
         }
 
         [HttpDelete]
         [Route("{id}")]
-        public IActionResult DeleteRequirement(int id)
+        public IActionResult DeleteRequirementById(int id)
         {
-            var result = _requirementRepository.DeleteRequirementFromList(id);
+            var result = _requirementService.DeleteRequirementFromList(id);
             if (result)
             {
                 return Ok(result);

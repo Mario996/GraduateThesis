@@ -22,10 +22,11 @@ namespace ElasticPMTServer
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
-            services.AddSingleton<ISearchService, SearchService>();
-            services.AddSingleton<IIndexService, IndexService>();
+            services.AddTransient<ISearchService, SearchService>();
+            services.AddTransient<IIndexService, IndexService>();
+            services.AddTransient<IRequirementService, RequirementService>();
             services.AddDbContext<DatabaseContext>(opt => opt.UseInMemoryDatabase());
-            services.AddScoped<IRequirementRepository, RequirementRepository>();
+            services.AddTransient<IRequirementRepository, RequirementRepository>();
             services.AddCors(options =>
             {
                 options.AddPolicy("CorsPolicy",

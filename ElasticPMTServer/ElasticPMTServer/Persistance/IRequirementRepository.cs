@@ -6,9 +6,10 @@ namespace ElasticPMTServer.Persistance
 {
     public interface IRequirementRepository
     {
-        List<RequirementDTO> GetAllRequirements();
-        RequirementDTO GetRequirementById(int id);
-        RequirementDTO AddRequirementToList(RequirementDTO requirement);
-        bool DeleteRequirementFromList(int id);
+        List<Requirement> GetAllRequirements();
+        Requirement GetRequirementById(int id);
+        Requirement CreateRequirement(RequirementDTO requirement);
+        void DeleteRequirement(Requirement requirement);
+        bool RequirementExists(int id);
     }
 }

@@ -16,41 +16,33 @@ namespace ElasticPMTServer.Persistance
             _context = context;
         }
 
-        public RequirementDTO AddRequirementToList(RequirementDTO dto)
+        public Requirement CreateRequirement(RequirementDTO dto)
         {
             Requirement newRequirement = new Requirement(dto);
             _context.Requirements.Add(newRequirement);
             _context.SaveChanges();
-            return new RequirementDTO(newRequirement);
+            return newRequirement;
         }
 
-        public bool DeleteRequirementFromList(int id)
+        public void DeleteRequirement(Requirement requirement)
         {
-            Requirement requirement = _context.Requirements.Where(req => req.Id == id).FirstOrDefault();
-            if (requirement == null)
-            {
-                return false;
-            }
-
             _context.Requirements.Remove(requirement);
             _context.SaveChanges();
-            return true;
         }
 
-        public List<RequirementDTO> GetAllRequirements()
+        public List<Requirement> GetAllRequirements()
         {
-            return _context.Requirements.Select(req => new RequirementDTO(req)).ToList();
+            return _context.Requirements.ToList();
         }
 
-        public RequirementDTO GetRequirementById(int id)
+        public Requirement GetRequirementById(int id)
         {
-            var result = _context.Requirements.FirstOrDefault(req => req.Id == id);
-            if(result != null)
-            {
-                return new RequirementDTO(result);
-            }
+            return _context.Requirements.Where(requirement => requirement.Id == id).First();
+        }
 
-            return null;
+        public bool RequirementExists(int id)
+        {
+            return _context.Requirements.Where(requirement => requirement.Id == id).FirstOrDefault() != null;
         }
     }
 }
