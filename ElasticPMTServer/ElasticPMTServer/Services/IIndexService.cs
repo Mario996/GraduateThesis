@@ -8,7 +8,7 @@ namespace ElasticPMTServer.Services
 {
     public interface IIndexService
     {
-        IndexResponse populateIndex();
+        BulkResponse populateIndex();
         bool indexExists();
     }
 }

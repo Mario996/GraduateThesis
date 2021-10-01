@@ -1,6 +1,9 @@
 ﻿using ElasticPMTServer.Models;
+using ElasticPMTServer.Models.ElasticSearch;
 using Nest;
 using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace ElasticPMTServer.Services
@@ -9,6 +12,8 @@ namespace ElasticPMTServer.Services
     {
         private readonly ElasticClient _elasticClient;
         private readonly ConnectionSettings _settings;
+        private List<CustomControl> controlsForIndexing = new List<CustomControl>();
+        private Dictionary<string, string> controlParameters = new Dictionary<string, string>();
 
         public IndexService()
         {
@@ -30,16 +35,17 @@ namespace ElasticPMTServer.Services
             return false;
         }
 
-        public IndexResponse populateIndex()
+        public BulkResponse populateIndex()
         {
-            var json = File.ReadAllText("C:\\Users\\Mario\\Desktop\\DIPLOMSKI\\NIST-LOW-BASELINE-PROFILE.json");
-            IndexResponse response = new IndexResponse();
+            var json = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Properties" , "NIST-LOW-BASELINE-PROFILE.json"));
+            BulkResponse response = new BulkResponse();
+
             if (!indexExists())
             {
                 var createIndexResponse = createIndex();
                 if (!createIndexResponse.IsValid)
                 {
-                    return new IndexResponse();
+                    return new BulkResponse();
                 }
                 Root root = JsonConvert.DeserializeObject<Root>(json);
 
@@ -51,68 +57,68 @@ namespace ElasticPMTServer.Services
                         string controlId = control.Id;
                         string controlClass = control.Class;
                         string controlTitle = control.Title;
+                        if(control.Params != null)
+                        {
+                            foreach(Param parameter in control.Params)
+                            {
+                                controlParameters.Add(parameter.Id, parameter.Label);
+                            }
+                        }
                         foreach (Part part in control.Parts)
                         {
                             if (part.Parts != null)
                             {
+                                addToListIfProseExists(groupTitle, controlId, controlClass, controlTitle, part.Id, part.Prose);
                                 foreach (Part innerPart in part.Parts)
                                 {
                                     if (innerPart.Parts != null)
                                     {
+                                        addToListIfProseExists(groupTitle, controlId, controlClass, controlTitle, innerPart.Id, innerPart.Prose);
                                         foreach (Part doubleInnerPart in innerPart.Parts)
                                         {
                                             if (doubleInnerPart.Parts != null)
                                             {
+                                                addToListIfProseExists(groupTitle, controlId, controlClass, controlTitle, doubleInnerPart.Id, doubleInnerPart.Prose);
                                                 foreach (Part tripleInnerPart in doubleInnerPart.Parts)
                                                 {
                                                     if (tripleInnerPart.Parts != null)
                                                     {
                                                         foreach (Part quadrupleInnerPart in tripleInnerPart.Parts)
-                                                        {
-                                                            string partId = quadrupleInnerPart.Id;
-                                                            string partProse = quadrupleInnerPart.Prose;
-                                                            CustomControl newControl = new CustomControl(groupTitle, controlId, controlClass, controlTitle, partId, partProse);
-                                                            _elasticClient.Index(newControl, i => i.Index("jsonindex"));
+                                                        {                                                      
+                                                            controlsForIndexing.Add(new CustomControl(groupTitle, controlId, controlClass, controlTitle, quadrupleInnerPart.Id, quadrupleInnerPart.Prose));
                                                         }
                                                     }
                                                     else
-                                                    {
-                                                        string partId = tripleInnerPart.Id;
-                                                        string partProse = tripleInnerPart.Prose;
-                                                        CustomControl newControl = new CustomControl(groupTitle, controlId, controlClass, controlTitle, partId, partProse);
-                                                        _elasticClient.Index(newControl, i => i.Index("jsonindex"));
+                                                    {                                                     
+                                                        controlsForIndexing.Add(new CustomControl(groupTitle, controlId, controlClass, controlTitle, tripleInnerPart.Id, tripleInnerPart.Prose));
                                                     }
                                                 }
                                             }
                                             else
                                             {
-                                                string partId = doubleInnerPart.Id;
-                                                string partProse = doubleInnerPart.Prose;
-                                                CustomControl newControl = new CustomControl(groupTitle, controlId, controlClass, controlTitle, partId, partProse);
-                                                _elasticClient.Index(newControl, i => i.Index("jsonindex"));
+                                                controlsForIndexing.Add(new CustomControl(groupTitle, controlId, controlClass, controlTitle, doubleInnerPart.Id, doubleInnerPart.Prose));
                                             }
                                         }
                                     }
                                     else
                                     {
-                                        string partId = innerPart.Id;
-                                        string partProse = innerPart.Prose;
-                                        CustomControl newControl = new CustomControl(groupTitle, controlId, controlClass, controlTitle, partId, partProse);
-                                        _elasticClient.Index(newControl, i => i.Index("jsonindex"));
+                                        controlsForIndexing.Add(new CustomControl(groupTitle, controlId, controlClass, controlTitle, innerPart.Id, innerPart.Prose));
                                     }
                                 }
                             }
                             else
-                            {
-                                string partId = part.Id;
-                                string partProse = part.Prose;
-                                CustomControl newControl = new CustomControl(groupTitle, controlId, controlClass, controlTitle, partId, partProse);
-                                response = _elasticClient.Index(newControl, i => i.Index("jsonindex"));
+                            {                     
+                                controlsForIndexing.Add(new CustomControl(groupTitle, controlId, controlClass, controlTitle, part.Id, part.Prose));
                             }
                         }
                     }
                 }
             }
+
+
+            populateDynamicParameters();
+
+            response = _elasticClient.IndexMany(controlsForIndexing, index: "jsonindex");
 
             return response;
         }
@@ -143,6 +149,34 @@ namespace ElasticPMTServer.Services
                      )
                          .Map<CustomControl>(m => m.AutoMap())
                  );
+        }
+
+        private void addToListIfProseExists(string groupTitle, string controlId, string controlClass, string controlTitle, string partId, string partProse)
+        {
+            if(partProse != null)
+            {
+                controlsForIndexing.Add(new CustomControl(groupTitle, controlId, controlClass, controlTitle, partId, partProse));
+            }
+        }
+
+        private void populateDynamicParameters()
+        {
+            System.Text.RegularExpressions.Regex reg = new System.Text.RegularExpressions.Regex("{{ insert: param, (.*?) }}");
+            for (int i = 0; i <= controlsForIndexing.Count - 1; i++)
+            {
+                if (reg.Matches(controlsForIndexing[i].PartProse).Count > 0)
+                {
+                    string[] splits = reg.Split(controlsForIndexing[i].PartProse);
+                    for (int j = 0; j <= splits.Length - 1; j++)
+                    {
+                        if (controlParameters.ContainsKey(splits[j]))
+                        {
+                            splits[j] = controlParameters[splits[j]];
+                        }
+                    }
+                    controlsForIndexing[i].PartProse = String.Concat(splits);
+                }
+            }
         }
     }
 }
